@@ -68,7 +68,12 @@ export class Reaction implements IDerivation, IReactionPublic {
         public name: string = "Reaction@" + getNextId(),
         private onInvalidate: () => void,
         private errorHandler?: (error: any, derivation: IDerivation) => void
-    ) {}
+    ) {
+        if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+            // only notify spy if this is a stand-alone observable
+            spyReport({ type: "createReaction", derivation: this, name: this.name })
+        }
+    }
 
     onBecomeStale() {
         this.schedule()

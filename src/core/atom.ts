@@ -9,7 +9,9 @@ import {
     onBecomeUnobserved,
     propagateChanged,
     reportObserved,
-    startBatch
+    startBatch,
+    isSpyEnabled,
+    spyReport
 } from "../internal"
 
 export const $mobx = Symbol("mobx administration")
@@ -31,7 +33,12 @@ export class Atom implements IAtom {
      * Create a new atom. For debugging purposes it is recommended to give it a name.
      * The onBecomeObserved and onBecomeUnobserved callbacks can be used for resource management.
      */
-    constructor(public name = "Atom@" + getNextId()) {}
+    constructor(public name = "Atom@" + getNextId()) {
+        if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+            // only notify spy if this is a stand-alone observable
+            spyReport({ type: "createAtom", atom: this, name: this.name })
+        }
+    }
 
     public onBecomeUnobserved() {
         // noop

@@ -119,6 +119,11 @@ export class ComputedValue<T> implements IObservable, IComputedValue<T>, IDeriva
         this.scope = options.context
         this.requiresReaction = !!options.requiresReaction
         this.keepAlive = !!options.keepAlive
+
+        if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+            // only notify spy if this is a stand-alone observable
+            spyReport({ type: "createComputed", derivation: this, name: this.name })
+        }
     }
 
     onBecomeStale() {
