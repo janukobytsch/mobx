@@ -6,7 +6,9 @@ import {
     TraceMode,
     getDependencyTree,
     globalState,
-    runReactions
+    runReactions,
+    spyReport,
+    isSpyEnabled
 } from "../internal"
 
 export interface IDepTreeNode {
@@ -67,6 +69,10 @@ export function addObserver(observable: IObservable, node: IDerivation) {
     if (observable.lowestObserverState > node.dependenciesState)
         observable.lowestObserverState = node.dependenciesState
 
+    if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+        spyReport({ type: "addObserver", observable, node })
+    }
+
     // invariantObservers(observable);
     // invariant(observable._observers.indexOf(node) !== -1, "INTERNAL ERROR didn't add node");
 }
@@ -80,6 +86,11 @@ export function removeObserver(observable: IObservable, node: IDerivation) {
         // deleting last observer
         queueForUnobservation(observable)
     }
+
+    if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+        spyReport({ type: "removeObserver", observable, node })
+    }
+
     // invariantObservers(observable);
     // invariant(observable._observers.indexOf(node) === -1, "INTERNAL ERROR remove already removed node2");
 }
