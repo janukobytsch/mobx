@@ -24,7 +24,8 @@ import {
     spyReportEnd,
     spyReportStart,
     allowStateChangesStart,
-    allowStateChangesEnd
+    allowStateChangesEnd,
+    spyReport
 } from "../internal"
 
 const MAX_SPLICE_SIZE = 10000 // See e.g. https://github.com/mobxjs/mobx/issues/859
@@ -150,6 +151,10 @@ class ObservableArrayAdministration
     constructor(name, enhancer: IEnhancer<any>, public owned: boolean) {
         this.atom = new Atom(name || "ObservableArray@" + getNextId())
         this.enhancer = (newV, oldV) => enhancer(newV, oldV, name + "[..]")
+        if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+            spyReport({ type: "createStructure", object: this, name: this.atom.name })
+            spyReport({ type: "addSlot", object: this, key: this.atom })
+        }
     }
 
     dehanceValue(value: any): any {
@@ -289,7 +294,7 @@ class ObservableArrayAdministration
         const change =
             notify || notifySpy
                 ? {
-                      object: this.proxy,
+                      object: /*this.proxy*/ this,
                       type: "splice",
                       index,
                       removed,

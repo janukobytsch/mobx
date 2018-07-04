@@ -31,7 +31,8 @@ import {
     registerListener,
     spyReportEnd,
     spyReportStart,
-    startBatch
+    startBatch,
+    spyReport
 } from "../internal"
 
 export interface IObservableObject {
@@ -87,6 +88,10 @@ export class ObservableObjectAdministration
         public defaultEnhancer: IEnhancer<any>
     ) {
         this.keysAtom = new Atom(name + ".keys")
+        if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+            spyReport({ type: "createStructure", object: this, name: this.name })
+            spyReport({ type: "addSlot", object: this, key: this.keysAtom })
+        }
     }
 
     read(key: string) {
@@ -156,6 +161,9 @@ export class ObservableObjectAdministration
                 false
             )
             map.set(key, entry)
+            if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+                spyReport({ type: "addSlot", object: this, key: entry })
+            }
         }
         entry.get() // read to subscribe
     }
@@ -184,7 +192,7 @@ export class ObservableObjectAdministration
         newValue = (observable as any).value // observableValue might have changed it
 
         Object.defineProperty(target, propName, generateObservablePropConfig(propName))
-        this.notifyPropertyAddition(propName, newValue)
+        this.notifyPropertyAddition(propName, newValue, observable)
     }
 
     addComputedProp(
@@ -281,16 +289,17 @@ export class ObservableObjectAdministration
         return registerInterceptor(this, handler)
     }
 
-    notifyPropertyAddition(key: string, newValue) {
+    notifyPropertyAddition(key: string, newValue, observable) {
         const notify = hasListeners(this)
         const notifySpy = isSpyEnabled()
         const change =
             notify || notifySpy
                 ? {
                       type: "add",
-                      object: this.proxy || this.target,
+                      object: /*this.proxy || */ this.target,
                       name: key,
-                      newValue
+                      newValue,
+                      atom: observable
                   }
                 : null
 

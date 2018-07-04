@@ -29,7 +29,8 @@ import {
     spyReportEnd,
     spyReportStart,
     transaction,
-    untracked
+    untracked,
+    spyReport
 } from "../internal"
 
 export interface IKeyValueMap<V = any> {
@@ -96,6 +97,10 @@ export class ObservableMap<K = any, V = any>
                 "mobx.map requires Map polyfill for the current browser. Check babel-polyfill or core-js/es6/map.js"
             )
         }
+        if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+            spyReport({ type: "createStructure", object: this, name: this.name })
+            spyReport({ type: "addSlot", object: this, key: this._keysAtom })
+        }
         this._data = new Map()
         this._hasMap = new Map()
         this.merge(initialData)
@@ -139,6 +144,7 @@ export class ObservableMap<K = any, V = any>
             })
             if (!change) return false
         }
+        let observable = this._data.get(key)!
         if (this._has(key)) {
             const notifySpy = isSpyEnabled()
             const notify = hasListeners(this)
@@ -148,7 +154,8 @@ export class ObservableMap<K = any, V = any>
                           type: "delete",
                           object: this,
                           oldValue: (<any>this._data.get(key)).value,
-                          name: key
+                          name: key,
+                          atom: observable
                       }
                     : null
 
@@ -157,7 +164,7 @@ export class ObservableMap<K = any, V = any>
             transaction(() => {
                 this._keysAtom.reportChanged()
                 this._updateHasMapEntry(key, false)
-                const observable = this._data.get(key)!
+                observable = this._data.get(key)!
                 observable.setNewValue(undefined as any)
                 this._data.delete(key)
             })
@@ -176,6 +183,9 @@ export class ObservableMap<K = any, V = any>
         } else {
             entry = new ObservableValue(value, referenceEnhancer, `${this.name}.${key}?`, false)
             this._hasMap.set(key, entry)
+            if (isSpyEnabled() && process.env.NODE_ENV !== "production") {
+                spyReport({ type: "addSlot", object: this, key: entry })
+            }
         }
         return entry
     }
@@ -206,13 +216,9 @@ export class ObservableMap<K = any, V = any>
 
     private _addValue(key: K, newValue: V) {
         checkIfStateModificationsAreAllowed(this._keysAtom)
+        let observable
         transaction(() => {
-            const observable = new ObservableValue(
-                newValue,
-                this.enhancer,
-                `${this.name}.${key}`,
-                false
-            )
+            observable = new ObservableValue(newValue, this.enhancer, `${this.name}.${key}`, false)
             this._data.set(key, observable)
             newValue = (observable as any).value // value might have been changed
             this._updateHasMapEntry(key, true)
@@ -226,7 +232,8 @@ export class ObservableMap<K = any, V = any>
                       type: "add",
                       object: this,
                       name: key,
-                      newValue
+                      newValue,
+                      atom: observable
                   }
                 : null
         if (notifySpy && process.env.NODE_ENV !== "production")
